@@ -246,6 +246,12 @@ async def health_check():
             "events_received": core_stats["events_received"],
             "agents_tracked": len(core_stats["agents_tracked"])
         },
+        "prana_telemetry": {
+            "status": "active",
+            "packets_received": prana_stats["packets_received"],
+            "users_tracked": len(prana_stats["users_tracked"]),
+            "systems": prana_stats["systems"]
+        },
         "governance": {
             "gate_active": True,
             "approved_integrations": len(governance_gate.approved_integrations),
@@ -718,9 +724,28 @@ class EnhancedLegalQueryRequest(BaseModel):
 core_events_store = []
 core_stats = {"events_received": 0, "agents_tracked": set()}
 
+# In-memory storage for PRANA telemetry
+prana_packets_store = []
+prana_stats = {"packets_received": 0, "users_tracked": set(), "systems": {"gurukul": 0, "ems": 0}}
+
 class CoreEventRequest(BaseModel):
     requester_id: str
     event_data: Dict
+
+class PranaPacket(BaseModel):
+    user_id: str
+    session_id: str
+    lesson_id: Optional[str] = None
+    task_id: Optional[str] = None
+    system_type: str  # "gurukul" | "ems"
+    role: str  # "student" | "employee"
+    timestamp: str
+    cognitive_state: str
+    active_seconds: float
+    idle_seconds: float
+    away_seconds: float
+    focus_score: int
+    raw_signals: Dict
 
 @app.post("/core/write-event")
 async def write_core_event(request: CoreEventRequest):
@@ -798,6 +823,169 @@ async def read_core_context(
         }
     else:
         return {"success": True, "context": None}
+
+# ============================================================================
+# PRANA TELEMETRY ENDPOINTS (User Behavior Tracking)
+# ============================================================================
+
+@app.post("/bucket/prana/ingest")
+async def ingest_prana_packet(packet: PranaPacket):
+    """Receive PRANA telemetry packets (fire-and-forget)"""
+    try:
+        # Convert to dict and ensure JSON serializable
+        packet_dict = packet.model_dump()
+        
+        # Store packet with metadata
+        stored_packet = {
+            "received_at": datetime.now(timezone.utc).isoformat(),
+            **packet_dict
+        }
+        
+        # Store in MongoDB FIRST (before adding to in-memory store)
+        if mongo_client and mongo_client.db is not None:
+            try:
+                mongo_packet = stored_packet.copy()
+                mongo_client.db.prana_telemetry.insert_one(mongo_packet)
+            except Exception as mongo_error:
+                logger.debug(f"MongoDB storage failed (non-blocking): {mongo_error}")
+        
+        # Add to in-memory store (clean dict without _id)
+        prana_packets_store.append(stored_packet)
+        prana_stats["packets_received"] += 1
+        prana_stats["users_tracked"].add(packet.user_id)
+        prana_stats["systems"][packet.system_type] = prana_stats["systems"].get(packet.system_type, 0) + 1
+        
+        # Forward to Karma (fire-and-forget)
+        try:
+            from integration.karma_forwarder import karma_forwarder
+            karma_event = {
+                "user_id": packet.user_id,
+                "action": f"cognitive_state_{packet.cognitive_state.lower()}",
+                "role": packet.role,
+                "note": f"Focus: {packet.focus_score}%, Active: {packet.active_seconds}s, System: {packet.system_type}",
+                "metadata": {
+                    "cognitive_state": packet.cognitive_state,
+                    "focus_score": packet.focus_score,
+                    "active_seconds": packet.active_seconds,
+                    "idle_seconds": packet.idle_seconds,
+                    "away_seconds": packet.away_seconds,
+                    "system_type": packet.system_type,
+                    "session_id": packet.session_id,
+                    "lesson_id": packet.lesson_id,
+                    "task_id": packet.task_id
+                }
+            }
+            asyncio.create_task(karma_forwarder.forward_prana_event(karma_event))
+        except Exception as karma_error:
+            logger.debug(f"Karma forward failed (non-blocking): {karma_error}")
+        
+        logger.info(f"PRANA packet received: user={packet.user_id}, state={packet.cognitive_state}, focus={packet.focus_score}")
+        return {"success": True, "message": "Packet received"}
+    except Exception as e:
+        logger.error(f"PRANA packet ingestion failed: {e}")
+        return {"success": False, "message": str(e)}
+
+@app.get("/bucket/prana/packets")
+async def get_prana_packets(
+    limit: int = Query(100, ge=1, le=1000),
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    system_type: Optional[str] = Query(None, description="Filter by system type")
+):
+    """Get PRANA packets stored in Bucket"""
+    try:
+        packets = prana_packets_store[:]
+        
+        if user_id:
+            packets = [p for p in packets if p.get("user_id") == user_id]
+        if system_type:
+            packets = [p for p in packets if p.get("system_type") == system_type]
+        
+        result_packets = packets[-limit:]
+        
+        # Ensure clean JSON serialization by removing any _id fields
+        clean_packets = []
+        for p in result_packets:
+            clean_p = {k: v for k, v in p.items() if k != "_id"}
+            clean_packets.append(clean_p)
+        
+        return {
+            "packets": clean_packets,
+            "count": len(packets),
+            "showing": len(clean_packets)
+        }
+    except Exception as e:
+        logger.error(f"PRANA packets error: {e}", exc_info=True)
+        return {"packets": [], "count": 0, "showing": 0, "error": str(e)}
+
+@app.get("/bucket/prana/stats")
+async def get_prana_stats():
+    """Get PRANA telemetry statistics"""
+    return {
+        "stats": {
+            "total_packets": prana_stats["packets_received"],
+            "unique_users": len(prana_stats["users_tracked"]),
+            "systems": prana_stats["systems"],
+            "tracked_users": list(prana_stats["users_tracked"])
+        },
+        "telemetry_status": "active"
+    }
+
+@app.get("/bucket/prana/user/{user_id}")
+async def get_user_prana_history(
+    user_id: str,
+    limit: int = Query(100, ge=1, le=1000)
+):
+    """Get PRANA history for a specific user"""
+    try:
+        user_packets = [p for p in prana_packets_store if p.get("user_id") == user_id]
+        
+        if not user_packets:
+            return {
+                "user_id": user_id,
+                "packets": [],
+                "count": 0,
+                "analytics": {
+                    "average_focus_score": 0,
+                    "state_distribution": {},
+                    "most_common_state": None
+                }
+            }
+        
+        total_focus = sum(p.get("focus_score", 0) for p in user_packets)
+        avg_focus = total_focus / len(user_packets)
+        
+        states = {}
+        for p in user_packets:
+            state = p.get("cognitive_state", "UNKNOWN")
+            states[state] = states.get(state, 0) + 1
+        
+        result_packets = user_packets[-limit:]
+        
+        # Ensure clean JSON serialization by removing any _id fields
+        clean_packets = []
+        for p in result_packets:
+            clean_p = {k: v for k, v in p.items() if k != "_id"}
+            clean_packets.append(clean_p)
+        
+        return {
+            "user_id": user_id,
+            "packets": clean_packets,
+            "count": len(user_packets),
+            "analytics": {
+                "average_focus_score": round(avg_focus, 2),
+                "state_distribution": states,
+                "most_common_state": max(states, key=states.get) if states else None
+            }
+        }
+    except Exception as e:
+        logger.error(f"User PRANA history error: {e}", exc_info=True)
+        return {
+            "user_id": user_id,
+            "packets": [],
+            "count": 0,
+            "analytics": {"average_focus_score": 0, "state_distribution": {}, "most_common_state": None},
+            "error": str(e)
+        }
 
 # Governance Endpoints
 @app.get("/governance/info")

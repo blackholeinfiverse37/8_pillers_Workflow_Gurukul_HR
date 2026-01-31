@@ -4,6 +4,7 @@ Forwards behavioral events from Core to Karma Chain for tracking
 """
 import aiohttp
 import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import logging
@@ -52,12 +53,12 @@ class KarmaForwarder:
                     "action": action,
                     "role": "user",
                     "note": f"Agent {agent_id} execution",
-                    "context": {
+                    "context": json.dumps({
                         "agent_id": agent_id,
                         "task_id": task_id,
                         "event_type": event_type,
                         "source": "bhiv_bucket"
-                    },
+                    }),
                     "metadata": event_data.get("metadata", {})
                 },
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -106,11 +107,11 @@ class KarmaForwarder:
                     "action": action,
                     "role": "user",
                     "note": f"RL outcome for {agent_id}",
-                    "context": {
+                    "context": json.dumps({
                         "agent_id": agent_id,
                         "reward": reward,
                         "source": "bhiv_bucket_rl"
-                    },
+                    }),
                     "metadata": metadata
                 },
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -138,6 +139,72 @@ class KarmaForwarder:
                     return response.status == 200
         except Exception:
             return False
+    
+    async def forward_prana_event(
+        self,
+        prana_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Forward PRANA telemetry to Karma for behavioral analysis"""
+        if not self.enabled:
+            return None
+            
+        try:
+            # Map cognitive state to karma action
+            state_to_action = {
+                "DEEP_FOCUS": "deep_focus_learning",
+                "ON_TASK": "active_engagement",
+                "THINKING": "contemplative_learning",
+                "IDLE": "passive_state",
+                "DISTRACTED": "attention_drift",
+                "AWAY": "disengagement",
+                "OFF_TASK": "task_avoidance"
+            }
+            
+            cognitive_state = prana_data.get("metadata", {}).get("cognitive_state", "ON_TASK")
+            action = state_to_action.get(cognitive_state, "user_activity")
+            
+            karma_event = {
+                "type": "life_event",
+                "data": {
+                    "user_id": prana_data.get("user_id", "unknown"),
+                    "action": action,
+                    "role": prana_data.get("role", "user"),
+                    "note": prana_data.get("note", "PRANA telemetry"),
+                    "context": json.dumps({
+                        "source": "prana_telemetry",
+                        "cognitive_state": cognitive_state,
+                        "focus_score": prana_data.get("metadata", {}).get("focus_score", 0),
+                        "system_type": prana_data.get("metadata", {}).get("system_type", "unknown"),
+                        "session_id": prana_data.get("metadata", {}).get("session_id"),
+                        "lesson_id": prana_data.get("metadata", {}).get("lesson_id"),
+                        "task_id": prana_data.get("metadata", {}).get("task_id")
+                    }),
+                    "metadata": prana_data.get("metadata", {})
+                },
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source": "prana_bucket"
+            }
+            
+            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                async with session.post(
+                    f"{self.karma_url}/v1/event/",
+                    json=karma_event
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        logger.debug(f"PRANA event forwarded to Karma: {cognitive_state}")
+                        return result
+                    else:
+                        text = await response.text()
+                        logger.warning(f"Karma PRANA forward returned {response.status}: {text}")
+                        return None
+                        
+        except asyncio.TimeoutError:
+            logger.debug("Karma PRANA timeout - continuing")
+            return None
+        except Exception as e:
+            logger.debug(f"Karma PRANA forward error: {e}")
+            return None
     
     def disable(self):
         """Disable Karma forwarding"""
