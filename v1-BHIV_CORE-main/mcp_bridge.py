@@ -470,6 +470,7 @@ from reinforcement.rl_context import RLContext
 from agents.agent_memory_handler import agent_memory_handler
 from utils.mongo_logger import mongo_logger
 from integration.bucket_client import bucket_client
+from integration.workflow_client import workflow_client
 import uuid
 import importlib
 import requests
@@ -677,6 +678,19 @@ async def handle_task_request(payload: TaskPayload) -> dict:
             })
         except Exception:
             # Silently continue - Core doesn't depend on Bucket
+            pass
+
+        # Check if workflow execution needed (fire-and-forget)
+        try:
+            if result.get("requires_workflow"):
+                await workflow_client.execute_workflow(
+                    trace_id=task_id,
+                    action_type=result.get("workflow_action_type", "task"),
+                    payload=result.get("workflow_payload", {}),
+                    user_id=result.get("user_id", "system")
+                )
+        except Exception:
+            # Silently continue - Core doesn't depend on Workflow Executor
             pass
 
         return {"task_id": task_id, "agent_output": result, "status": "success"}

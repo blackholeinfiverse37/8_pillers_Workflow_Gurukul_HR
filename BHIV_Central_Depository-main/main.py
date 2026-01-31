@@ -749,9 +749,10 @@ class PranaPacket(BaseModel):
 
 @app.post("/core/write-event")
 async def write_core_event(request: CoreEventRequest):
-    """Receive events from Core (fire-and-forget) and forward to Karma"""
+    """Receive events from Core, Workflow Executor, and UAO (fire-and-forget) and forward to Karma"""
     try:
-        if request.requester_id != "bhiv_core":
+        # Accept events from Core, Workflow Executor, and Unified Action Orchestrator
+        if request.requester_id not in ["bhiv_core", "workflow_executor", "unified_action_orchestrator"]:
             raise HTTPException(status_code=403, detail="Unauthorized requester")
         
         event = {

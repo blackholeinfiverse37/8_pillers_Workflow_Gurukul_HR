@@ -83,7 +83,7 @@ def rnanubandhan_col():
 # Fallback for direct access (backwards compatibility)
 try:
     db = get_db()
-    if db:
+    if db is not None:
         users_col = db["users"]
         transactions_col = db["transactions"]
         qtable_col = db["q_table"]
