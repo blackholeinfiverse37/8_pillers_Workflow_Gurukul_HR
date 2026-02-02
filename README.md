@@ -145,6 +145,7 @@ python insight_service.py
 ```bash
 cd "Insight_Flow-main"
 start_bridge_standalone.bat
+start_bridge.bat              (Connected with full backend)
 ```
 ✅ Wait for: "Uvicorn running on http://0.0.0.0:8006"  
 ✅ Insight Flow Bridge runs on: **http://localhost:8006**  

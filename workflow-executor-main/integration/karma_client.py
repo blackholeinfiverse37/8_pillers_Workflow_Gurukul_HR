@@ -16,7 +16,7 @@ class KarmaClient:
     
     def __init__(self, karma_url: str = "http://localhost:8000"):
         self.karma_url = karma_url.rstrip('/')
-        self.timeout = aiohttp.ClientTimeout(total=2.0)
+        self.timeout = aiohttp.ClientTimeout(total=5.0)  # Increased from 2.0 to 5.0
         self.enabled = True
         
     async def log_workflow_behavior(

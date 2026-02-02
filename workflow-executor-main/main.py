@@ -114,28 +114,38 @@ async def execute_workflow(request: WorkflowExecuteRequest):
         # -------------------------------------------------
         # Fire-and-forget integration logging
         # -------------------------------------------------
+        # Log to Bucket (audit trail)
         try:
-            # Log to Bucket (audit trail) - await to ensure it completes
-            await bucket_client.log_workflow_execution(
+            bucket_logged = await bucket_client.log_workflow_execution(
                 trace_id=trace_id,
                 action_type=action_type,
                 status=status,
                 execution_result=result,
                 metadata=payload
             )
-            
-            # Log to Karma (behavioral tracking)
+            if bucket_logged:
+                logger.info(f"✅ Bucket logging successful: {trace_id}")
+            else:
+                logger.warning(f"⚠️ Bucket logging failed: {trace_id}")
+        except Exception as bucket_error:
+            logger.error(f"❌ Bucket logging exception: {bucket_error}")
+        
+        # Log to Karma (behavioral tracking)
+        try:
             user_id = payload.get("user_id", "system")
-            await karma_client.log_workflow_behavior(
+            karma_logged = await karma_client.log_workflow_behavior(
                 trace_id=trace_id,
                 user_id=user_id,
                 action_type=action_type,
                 status=status,
                 metadata={"result": result}
             )
-        except Exception as integration_error:
-            # Silently continue - workflow execution succeeded
-            logger.debug(f"Integration logging failed (non-blocking): {integration_error}")
+            if karma_logged:
+                logger.info(f"✅ Karma logging successful: {trace_id}")
+            else:
+                logger.warning(f"⚠️ Karma logging failed: {trace_id}")
+        except Exception as karma_error:
+            logger.error(f"❌ Karma logging exception: {karma_error}")
 
         return {
             "trace_id": trace_id,
