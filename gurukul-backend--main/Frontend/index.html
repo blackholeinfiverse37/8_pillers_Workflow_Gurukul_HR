@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gurukul</title>
+  <!-- BUILD: 2026-01-06-v2 CACHE BUSTER -->
+  <!-- Google Translate -->
+  <script type="text/javascript">
+    // Suppress Google Translate DOM errors globally (they're harmless but annoying)
+    // These errors occur when Google Translate tries to manipulate DOM nodes that have been modified
+    const originalError = window.onerror;
+    window.onerror = function(msg, url, line, col, error) {
+      // Suppress insertBefore errors from Google Translate
+      if (msg && (msg.includes('insertBefore') || msg.includes('Node.insertBefore'))) {
+        return true; // Suppress the error
+      }
+      // Call original error handler if it exists
+      if (originalError) {
+        return originalError.apply(this, arguments);
+      }
+      return false;
+    };
+    
+    // Also suppress uncaught exceptions
+    window.addEventListener('error', function(e) {
+      if (e.message && (e.message.includes('insertBefore') || e.message.includes('Node.insertBefore'))) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return true;
+      }
+    }, true);
+    
+    window.googleTranslateElementInit = function() {
+      try {
+        if (window.google && window.google.translate && window.google.translate.TranslateElement) {
+          new google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'en,hi,es,fr,de,it,pt,ru,ja,ko,zh-CN,ar,bn,gu,kn,ml,mr,ne,pa,ta,te,ur',
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+          }, 'google_translate_element');
+        } else {
+          console.warn('Google Translate API not available yet');
+        }
+      } catch (error) {
+        // Suppress Google Translate initialization errors
+        if (!error.message || (!error.message.includes('insertBefore') && !error.message.includes('Node.insertBefore'))) {
+          console.error('Error initializing Google Translate:', error);
+        }
+      }
+    };
+    
+    // Only handle tooltips on text selection - NO banner manipulation
+    // CSS in index.css will handle hiding the banner completely
+    document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener('mouseup', function(e) {
+        setTimeout(() => {
+          try {
+            const tooltip = document.querySelector('.goog-tooltip');
+            if (tooltip) {
+              tooltip.style.setProperty('display', 'none', 'important');
+              tooltip.style.setProperty('visibility', 'hidden', 'important');
+              tooltip.style.setProperty('opacity', '0', 'important');
+            }
+          } catch (e) {
+            // Silently ignore
+          }
+        }, 10);
+      }, true);
+    });
+  </script>
+  <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" defer></script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+
+</body>
+
+</html>

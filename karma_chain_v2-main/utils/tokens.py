@@ -22,6 +22,9 @@ def apply_decay_and_expiry(user_doc):
     last_decay = user_doc.get("last_decay", now_utc())
     if isinstance(last_decay, str):
         last_decay = datetime.fromisoformat(last_decay)
+    # Ensure timezone-aware datetime
+    if last_decay.tzinfo is None:
+        last_decay = last_decay.replace(tzinfo=timezone.utc)
     delta_days = (now_utc() - last_decay).total_seconds() / 86400.0
     if delta_days <= 0:
         return user_doc
@@ -38,6 +41,9 @@ def apply_decay_and_expiry(user_doc):
         created = meta.get(token, {}).get("created_at", now_utc())
         if isinstance(created, str):
             created = datetime.fromisoformat(created)
+        # Ensure timezone-aware datetime
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
         expiry_days = attrs.get("expiry_days", None)
         if expiry_days:
             if (now_utc() - created).days >= expiry_days:
