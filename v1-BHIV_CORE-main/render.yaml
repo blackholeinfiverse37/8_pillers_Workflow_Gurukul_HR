@@ -1,28 +1,31 @@
 services:
   - type: web
-    name: bhiv-core-service
+    name: bhiv-core
     env: python
-    region: singapore
-    plan: free
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: pip install -r requirements.txt
     startCommand: python mcp_bridge.py
-    healthCheckPath: /health
     envVars:
       - key: PORT
-        value: 10000
+        value: 8002
       - key: ENVIRONMENT
         value: production
-      - key: LOG_LEVEL
-        value: INFO
-      - key: MONGO_URI
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
       - key: USE_RL
         value: true
       - key: RL_EXPLORATION_RATE
         value: 0.2
-      - key: BUCKET_URL
-        value: https://eight-pillers-workflow.onrender.com
-      - key: KARMA_URL
+      - key: MONGO_URI
         sync: false
+      - key: QDRANT_URLS
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: BUCKET_URL
+        value: https://your-bucket-service.onrender.com
+      - key: KARMA_URL
+        value: https://your-karma-service.onrender.com
+      - key: INSIGHT_URL
+        value: https://your-insight-service.onrender.com
+    healthCheckPath: /health
