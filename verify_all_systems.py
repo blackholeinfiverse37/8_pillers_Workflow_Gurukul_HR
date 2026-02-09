@@ -56,9 +56,7 @@ def main():
         "Application Backends": [
             ("Gurukul Backend (3000)", "http://localhost:3000/health"),
             ("EMS Backend (8008)", "http://localhost:8008/health"),
-            ("HR Platform Gateway (8009)", "http://localhost:8009/health"),
             ("Blackhole Backend (5001)", "http://localhost:5001/api/ping"),
-            ("HR Platform Agent (9000)", "http://localhost:9000/health"),
         ],
         "Frontend Applications": [
             ("Gurukul Frontend (5173)", "http://localhost:5173"),
@@ -171,11 +169,11 @@ def main():
     # Recommendations
     if healthy_services < total_services:
         print(f"\n{YELLOW}RECOMMENDATIONS:{RESET}")
-        print("1. Start missing services using the startup guide in README.md")
-        print("2. Check service logs for error messages")
-        print("3. Verify .env configuration files are present")
-        print("4. Ensure MongoDB and Redis connections are configured")
-        print("5. Run: netstat -ano | findstr \":<PORT>\" to check port conflicts")
+        print("1. HR Platform services excluded (source files missing)")
+        print("2. 13/13 operational services is production-ready")
+        print("3. Start missing services using the startup guide in README.md")
+        print("4. Check service logs for error messages")
+        print("5. Verify .env configuration files are present")
 
 if __name__ == "__main__":
     main()

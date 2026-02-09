@@ -241,9 +241,10 @@ START_CLIENT.bat
 **Terminal 14: HR Platform Gateway (8009)**
 ```bash
 cd "INFIVERSE-HR-PLATFORM-main/backend/services/gateway"
-uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8009
 ```
 ✅ Wait for: "Application startup complete"
+⚠️ **Note**: Run without `--reload` flag (source files missing, using bytecode)
 
 **Terminal 15: HR Platform Agent (9000)**
 ```bash
