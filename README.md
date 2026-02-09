@@ -248,9 +248,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
 **Terminal 15: HR Platform Agent (9000)**
 ```bash
 cd "INFIVERSE-HR-PLATFORM-main/backend/services/agent"
-uvicorn app:app --host 0.0.0.0 --port 9000 --reload
+python -m uvicorn app:app --host 0.0.0.0 --port 9000
 ```
 ✅ Wait for: "Application startup complete"
+⚠️ **Note**: Run without `--reload` flag (source files missing, using bytecode)
 
 **Terminal 16: HR Platform Frontend (3002) - Optional**
 ```bash
@@ -447,13 +448,13 @@ netstat -ano | findstr ":8000"
 taskkill /PID <PID> /F
 ```
 
-### Issue: Gurukul can't connect to Core/Bucket/Karma
-**Solution**: Gurukul continues with fallback. Verify services are running:
+### Issue: HR Platform Agent crashes on reload
+**Solution**: Run without `--reload` flag (source files missing)
 ```bash
-curl http://localhost:8000/health
-curl http://localhost:8001/health
-curl http://localhost:8002/health
+cd "INFIVERSE-HR-PLATFORM-main/backend/services/agent"
+python -m uvicorn app:app --host 0.0.0.0 --port 9000
 ```
+Or use: `START_AGENT.bat`
 
 ---
 
