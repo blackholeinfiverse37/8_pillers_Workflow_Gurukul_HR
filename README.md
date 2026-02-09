@@ -265,6 +265,54 @@ npm run dev -- --port 3002
 
 ## 🧪 Testing & Verification
 
+### Quick System Check (Recommended)
+
+**Run the complete system verification script:**
+
+```bash
+python verify_all_systems.py
+```
+
+**This will check:**
+- ✅ All 16 service health endpoints
+- ✅ Integration between services
+- ✅ 9-Pillar core chain connectivity
+- ✅ Frontend accessibility
+- ✅ Overall system readiness
+
+**Expected Output:**
+```
+================================================================================
+                    16-SERVICE SYSTEM VERIFICATION                            
+================================================================================
+
+▶ 9-Pillar Core Services
+✓ Karma (8000)                           - PASS       HEALTHY
+✓ Bucket (8001)                          - PASS       HEALTHY
+✓ Core (8002)                            - PASS       HEALTHY
+✓ Workflow (8003)                        - PASS       HEALTHY
+✓ UAO (8004)                             - PASS       HEALTHY
+✓ Insight Core (8005)                    - PASS       HEALTHY
+✓ Insight Flow (8006)                    - PASS       HEALTHY
+
+▶ Application Backends
+✓ Gurukul Backend (3000)                 - PASS       HEALTHY
+✓ EMS Backend (8008)                     - PASS       HEALTHY
+✓ HR Platform Gateway (8009)             - PASS       HEALTHY
+✓ Blackhole Backend (5001)               - PASS       HEALTHY
+✓ HR Platform Agent (9000)               - PASS       HEALTHY
+
+▶ Frontend Applications
+✓ Gurukul Frontend (5173)                - PASS       HEALTHY
+✓ EMS Frontend (3001)                    - PASS       HEALTHY
+✓ HR Platform Frontend (3002)            - PASS       HEALTHY
+✓ Blackhole Frontend (5174)              - PASS       HEALTHY
+
+================================================================================
+      ✓ ALL SYSTEMS OPERATIONAL - READY FOR PRODUCTION!
+================================================================================
+```
+
 ### Health Checks (All 16 Services)
 ```bash
 # 9-Pillar Services
